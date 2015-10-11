@@ -35,7 +35,6 @@ config = {
             '-Wno-unused',
             '-fno-exceptions',
             '-Wno-unused-parameter',
-            '-fdiagnostics-color',
             '-D__runtime_js__',
             '-DRUNTIMEJS_PLATFORM_X64',
         ]),

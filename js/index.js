@@ -60,6 +60,8 @@ runtime.shell.setCommand('reboot', function(args, env, cb) {
   cb(0);
 });
 
+runtime.libsodium = require('./core/libsodium');
+
 
 // Start device drivers
 require('./driver/ps2');

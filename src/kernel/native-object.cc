@@ -25,6 +25,7 @@
 #include <kernel/version.h>
 #include <kernel/heap-snapshot.h>
 #include <v8-profiler.h>
+#include <sodium.h>
 
 namespace rt {
 
@@ -572,6 +573,7 @@ NATIVE_FUNCTION(NativesObject, Resources) {
     LOCAL_V8STRING(s_allocator, "allocator");
     LOCAL_V8STRING(s_loader, "loader");
     LOCAL_V8STRING(s_natives, "natives");
+    LOCAL_V8STRING(s_libsodium, "libsodium");
 
     v8::Local<v8::Object> obj = v8::Object::New(iv8);
 
@@ -598,6 +600,10 @@ NATIVE_FUNCTION(NativesObject, Resources) {
     obj->Set(context, s_loader, v8::Function::New(context, KernelLoaderCallback).ToLocalChecked());
 
     obj->Set(context, s_natives, (new NativesObject())
+        ->BindToTemplateCache(th->template_cache())
+        ->GetInstance());
+
+    obj->Set(context, s_libsodium, (new LibsodiumObject())
         ->BindToTemplateCache(th->template_cache())
         ->GetInstance());
 
@@ -1318,6 +1324,202 @@ NATIVE_FUNCTION(AllocatorObject, AllocDMA) {
         v8::ArrayBufferCreationMode::kExternalized));
 
     args.GetReturnValue().Set(ret);
+}
+
+NATIVE_FUNCTION(LibsodiumObject, BlakeHash) {
+  PROLOGUE;
+  USEARG(0);
+  VALIDATEARG(0, STRING, "blake_hash: argument 0 is not a string");
+
+  v8::Local<v8::String> hashData = arg0->ToString(context).ToLocalChecked();
+  v8::String::Utf8Value hashData_utf8_val(hashData);
+  const char* hashData_str = *hashData_utf8_val;
+
+  unsigned char hash[crypto_generichash_BYTES];
+
+  crypto_generichash(hash, sizeof hash, (const unsigned char*)hashData_str, strlen(hashData_str), nullptr, 0);
+
+  char returnString[(sizeof(hash)/sizeof(unsigned char))*2 + 1];
+
+  for (int i = 0; i < (sizeof(hash)/sizeof(unsigned char)); i++) {
+    sprintf(&returnString[i*2], "%02X", hash[i]);
+  }
+
+  v8::MaybeLocal<v8::String> maybe_ret = v8::String::NewFromUtf8(iv8, returnString, v8::NewStringType::kNormal);
+
+  v8::Local<v8::String> ret;
+  if (!maybe_ret.ToLocal(&ret)) {
+    args.GetReturnValue().SetUndefined();
+    return;
+  }
+
+  args.GetReturnValue().Set(ret);
+}
+
+NATIVE_FUNCTION(LibsodiumObject, Sha256Hash) {
+  PROLOGUE;
+  USEARG(0);
+  VALIDATEARG(0, STRING, "sha256_hash: argument 0 is not a string");
+
+  v8::Local<v8::String> hashData = arg0->ToString(context).ToLocalChecked();
+  v8::String::Utf8Value hashData_utf8_val(hashData);
+  const char* hashData_str = *hashData_utf8_val;
+
+  unsigned char hash[crypto_hash_sha256_BYTES];
+
+  crypto_hash_sha256(hash, (const unsigned char*)hashData_str, strlen(hashData_str));
+
+  char returnString[(sizeof(hash)/sizeof(unsigned char))*2 + 1];
+
+  for (int i = 0; i < (sizeof(hash)/sizeof(unsigned char)); i++) {
+    sprintf(&returnString[i*2], "%02X", hash[i]);
+  }
+
+  v8::MaybeLocal<v8::String> maybe_ret = v8::String::NewFromUtf8(iv8, returnString, v8::NewStringType::kNormal);
+
+  v8::Local<v8::String> ret;
+  if (!maybe_ret.ToLocal(&ret)) {
+    args.GetReturnValue().SetUndefined();
+    return;
+  }
+
+  args.GetReturnValue().Set(ret);
+}
+
+NATIVE_FUNCTION(LibsodiumObject, Sha512Hash) {
+  PROLOGUE;
+  USEARG(0);
+  VALIDATEARG(0, STRING, "crypto_hash_sha512: argument 0 is not a string.");
+
+  v8::Local<v8::String> hashData = arg0->ToString(context).ToLocalChecked();
+  v8::String::Utf8Value hashData_utf8_val(hashData);
+  const char* hashData_str = *hashData_utf8_val;
+
+  unsigned char hash[crypto_hash_sha512_BYTES];
+
+  crypto_hash_sha512(hash, (const unsigned char*)hashData_str, strlen(hashData_str));
+
+  char returnString[(sizeof(hash)/sizeof(unsigned char))*2 + 1];
+
+  for (int i = 0; i < (sizeof(hash)/sizeof(unsigned char)); i++) {
+    sprintf(&returnString[i*2], "%02X", hash[i]);
+  }
+
+  v8::MaybeLocal<v8::String> maybe_ret = v8::String::NewFromUtf8(iv8, returnString, v8::NewStringType::kNormal);
+
+  v8::Local<v8::String> ret;
+  if (!maybe_ret.ToLocal(&ret)) {
+    args.GetReturnValue().SetUndefined();
+    return;
+  }
+
+  args.GetReturnValue().Set(ret);
+}
+
+NATIVE_FUNCTION(LibsodiumObject, Constants) {
+  PROLOGUE;
+
+  v8::Local<v8::Object> ret = v8::Object::New(iv8);
+  LOCAL_V8STRING(s_crypto_secretbox_NONCEBYTES, "crypto_secretbox_NONCEBYTES");
+  ret->Set(context, s_crypto_secretbox_NONCEBYTES, v8::Number::New(iv8, crypto_secretbox_NONCEBYTES));
+
+  args.GetReturnValue().Set(ret);
+}
+
+NATIVE_FUNCTION(LibsodiumObject, SecretboxEasy) {
+  PROLOGUE;
+  USEARG(0);
+  USEARG(1);
+  USEARG(2);
+  VALIDATEARG(0, STRING, "crypto_secretbox_easy: argument 0 is not a string.");
+  VALIDATEARG(1, STRING, "crypto_secretbox_easy: argument 1 is not a string.");
+  VALIDATEARG(2, OBJECT, "crypto_secretbox_easy: argument 2 is not a array/object.");
+
+  v8::Local<v8::String> encData = arg0->ToString(context).ToLocalChecked();
+  v8::String::Utf8Value encData_utf8_val(encData);
+  const char* encData_str = *encData_utf8_val;
+
+  v8::Local<v8::String> keyData = arg1->ToString(context).ToLocalChecked();
+  v8::String::Utf8Value keyData_utf8_val(keyData);
+  const char* keyData_str = *keyData_utf8_val;
+
+  v8::Local<v8::Object> nonceArray = arg2->ToObject(context).ToLocalChecked();
+  unsigned char nonceBytes[crypto_secretbox_NONCEBYTES];
+
+  for (int i = 0; i < (int)nonceArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value(); i++) {
+    nonceBytes[i] = (unsigned char)nonceArray->Get(i)->ToNumber()->Value();
+  }
+
+  unsigned char ciphertext[crypto_secretbox_MACBYTES + strlen(encData_str)];
+
+  crypto_secretbox_easy(ciphertext, (const unsigned char*)encData_str, strlen(encData_str), nonceBytes, (const unsigned char*)keyData_str);
+
+  char returnString[(sizeof(ciphertext)/sizeof(unsigned char))*2 + 1];
+
+  for (int i = 0; i < (sizeof(ciphertext)/sizeof(unsigned char)); i++) {
+    sprintf(&returnString[i*2], "%02X", ciphertext[i]);
+  }
+
+  v8::MaybeLocal<v8::String> maybe_ret = v8::String::NewFromUtf8(iv8, returnString, v8::NewStringType::kNormal);
+
+  v8::Local<v8::String> ret;
+  if (!maybe_ret.ToLocal(&ret)) {
+    args.GetReturnValue().SetUndefined();
+    return;
+  }
+
+  args.GetReturnValue().Set(ret);
+}
+
+NATIVE_FUNCTION(LibsodiumObject, SecretboxEasyOpen) {
+  PROLOGUE;
+  USEARG(0);
+  USEARG(1);
+  USEARG(2);
+  VALIDATEARG(0, OBJECT, "crypto_secretbox_easy_open: argument 0 is not a array/object.");
+  VALIDATEARG(1, STRING, "crypto_secretbox_easy_open: argument 1 is not a string.");
+  VALIDATEARG(2, OBJECT, "crypto_secretbox_easy_open: argument 2 is not a array/object.");
+
+  v8::Local<v8::Object> cipherArray = arg0->ToObject(context).ToLocalChecked();
+  unsigned char cipherBytes[(int)cipherArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value()];
+
+  for (int i = 0; i < (int)cipherArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value(); i++) {
+    cipherBytes[i] = (unsigned char)cipherArray->Get(i)->ToNumber()->Value();
+  }
+
+  v8::Local<v8::String> keyData = arg1->ToString(context).ToLocalChecked();
+  v8::String::Utf8Value keyData_utf8_val(keyData);
+  const char* keyData_str = *keyData_utf8_val;
+
+  v8::Local<v8::Object> nonceArray = arg2->ToObject(context).ToLocalChecked();
+  unsigned char nonceBytes[crypto_secretbox_NONCEBYTES];
+
+  for (int i = 0; i < (int)nonceArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value(); i++) {
+    nonceBytes[i] = (unsigned char)nonceArray->Get(i)->ToNumber()->Value();
+  }
+
+  unsigned char deciphertext[(int)cipherArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value() - crypto_secretbox_MACBYTES];
+
+  if (crypto_secretbox_open_easy(deciphertext, cipherBytes, (int)cipherArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value(), nonceBytes, (const unsigned char*)keyData_str) != 0) {
+    args.GetReturnValue().SetUndefined();
+    return;
+  }
+
+  char returnString[(sizeof(deciphertext)/sizeof(unsigned char))*2 + 1];
+
+  for (int i = 0; i < (sizeof(deciphertext)/sizeof(unsigned char)); i++) {
+    sprintf(&returnString[i*2], "%02X", deciphertext[i]);
+  }
+
+  v8::MaybeLocal<v8::String> maybe_ret = v8::String::NewFromUtf8(iv8, returnString, v8::NewStringType::kNormal);
+
+  v8::Local<v8::String> ret;
+  if (!maybe_ret.ToLocal(&ret)) {
+    args.GetReturnValue().SetUndefined();
+    return;
+  }
+
+  args.GetReturnValue().Set(ret);
 }
 
 } // namespace rt

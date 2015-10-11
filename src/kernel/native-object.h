@@ -375,4 +375,29 @@ public:
 private:
 };
 
+class LibsodiumObject : public JsObjectWrapper<LibsodiumObject, NativeTypeId::TYPEID_LIBSODIUM> {
+public:
+  LibsodiumObject() : JsObjectWrapper() {}
+
+  DECLARE_NATIVE(BlakeHash);
+  DECLARE_NATIVE(Sha256Hash);
+  DECLARE_NATIVE(Sha512Hash);
+  DECLARE_NATIVE(Constants);
+  DECLARE_NATIVE(SecretboxEasy);
+  DECLARE_NATIVE(SecretboxEasyOpen);
+
+  void ObjectInit(ExportBuilder obj) {
+    obj.SetCallback("crypto_generichash", BlakeHash);
+    obj.SetCallback("crypto_hash_sha256", Sha256Hash);
+    obj.SetCallback("crypto_hash_sha512", Sha512Hash);
+    obj.SetCallback("crypto_constants", Constants);
+    obj.SetCallback("crypto_secretbox_easy", SecretboxEasy);
+    obj.SetCallback("crypto_secretbox_open_easy", SecretboxEasyOpen);
+  }
+
+  JsObjectWrapperBase* Clone() const {
+    return nullptr;
+  }
+};
+
 } // namespace rt
