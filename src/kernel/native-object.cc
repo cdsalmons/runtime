@@ -1431,13 +1431,16 @@ NATIVE_FUNCTION(LibsodiumObject, SecretboxEasy) {
   USEARG(0);
   USEARG(1);
   USEARG(2);
-  VALIDATEARG(0, STRING, "crypto_secretbox_easy: argument 0 is not a string.");
+  VALIDATEARG(0, OBJECT, "crypto_secretbox_easy: argument 0 is not a array/object.");
   VALIDATEARG(1, STRING, "crypto_secretbox_easy: argument 1 is not a string.");
   VALIDATEARG(2, OBJECT, "crypto_secretbox_easy: argument 2 is not a array/object.");
 
-  v8::Local<v8::String> encData = arg0->ToString(context).ToLocalChecked();
-  v8::String::Utf8Value encData_utf8_val(encData);
-  const char* encData_str = *encData_utf8_val;
+  v8::Local<v8::Object> dataArray = arg0->ToObject(context).ToLocalChecked();
+  unsigned char dataBytes[(int)dataArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value()];
+
+  for (int i = 0; i < (int)dataArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value(); i++) {
+    dataBytes[i] = (unsigned char)dataArray->Get(i)->ToNumber()->Value();
+  }
 
   v8::Local<v8::String> keyData = arg1->ToString(context).ToLocalChecked();
   v8::String::Utf8Value keyData_utf8_val(keyData);
@@ -1450,9 +1453,9 @@ NATIVE_FUNCTION(LibsodiumObject, SecretboxEasy) {
     nonceBytes[i] = (unsigned char)nonceArray->Get(i)->ToNumber()->Value();
   }
 
-  unsigned char ciphertext[crypto_secretbox_MACBYTES + strlen(encData_str)];
+  unsigned char ciphertext[crypto_secretbox_MACBYTES + (int)dataArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value()];
 
-  crypto_secretbox_easy(ciphertext, (const unsigned char*)encData_str, strlen(encData_str), nonceBytes, (const unsigned char*)keyData_str);
+  crypto_secretbox_easy(ciphertext, dataBytes, (int)dataArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value(), nonceBytes, (const unsigned char*)keyData_str);
 
   char returnString[(sizeof(ciphertext)/sizeof(unsigned char))*2 + 1];
 
@@ -1476,9 +1479,9 @@ NATIVE_FUNCTION(LibsodiumObject, SecretboxEasyOpen) {
   USEARG(0);
   USEARG(1);
   USEARG(2);
-  VALIDATEARG(0, OBJECT, "crypto_secretbox_easy_open: argument 0 is not a array/object.");
-  VALIDATEARG(1, STRING, "crypto_secretbox_easy_open: argument 1 is not a string.");
-  VALIDATEARG(2, OBJECT, "crypto_secretbox_easy_open: argument 2 is not a array/object.");
+  VALIDATEARG(0, OBJECT, "crypto_secretbox_open_easy: argument 0 is not a array/object.");
+  VALIDATEARG(1, STRING, "crypto_secretbox_open_easy: argument 1 is not a string.");
+  VALIDATEARG(2, OBJECT, "crypto_secretbox_open_easy: argument 2 is not a array/object.");
 
   v8::Local<v8::Object> cipherArray = arg0->ToObject(context).ToLocalChecked();
   unsigned char cipherBytes[(int)cipherArray->Get(v8::String::NewFromUtf8(iv8, "length", v8::NewStringType::kNormal).ToLocalChecked())->ToNumber()->Value()];

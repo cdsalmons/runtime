@@ -27,30 +27,31 @@ function hexToU8(hexStr) {
 
 module.exports = {
   crypto_secretbox_easy: function(data, key) {
-    var nonce = runtime.random.getRandomValues(lib.crypto_constants().crypto_secretbox_NONCEBYTES);
-    var nonceArr = new Array(lib.crypto_constants().crypto_secretbox_NONCEBYTES);
-    for (var i = 0; i < nonce.length; i++) {
-      nonceArr[i] = nonce[i];
+    var dataArr = data;
+
+    if (typeof data === 'string') {
+      dataArr = new Uint8Array(data.length);
+      for (var i = 0; i < data.length; i++) {
+        dataArr[i] = data.charCodeAt(i);
+      }
+    } else {
+      throw new Error('crypto_secretbox_easy: data (argument 0) must be a string or Uint8Array.');
     }
 
-    var cipher = lib.crypto_secretbox_easy(data, key, nonceArr);
+    var nonceArr = runtime.random.getRandomValues(lib.crypto_constants().crypto_secretbox_NONCEBYTES);
+
+    var cipher = lib.crypto_secretbox_easy(dataArr, key, nonceArr);
     if (!cipher) {
       throw new Error('crypto_secretbox_easy: error creating box.');
     }
     return {
       ciphertext: hexToU8(cipher),
-      nonce: nonce
+      nonce: nonceArr
     };
   },
-  crypto_secretbox_open_easy: function(cipheru8, key, nonce) {
-    var nonceArr = new Array(lib.crypto_constants().crypto_secretbox_NONCEBYTES);
-    for (var i = 0; i < nonce.length; i++) {
-      nonceArr[i] = nonce[i];
-    }
-
-    var cipherArr = new Array(cipheru8.length);
-    for (var i = 0; i < cipheru8.length; i++) {
-      cipherArr[i] = cipheru8[i];
+  crypto_secretbox_open_easy: function(cipherArr, key, nonceArr) {
+    if (!cipherArr instanceof Uint8Array) {
+      throw new Error('crypto_secretbox_open_easy: cipher data (argument 0) must be a Uint8Array.');
     }
 
     var decipher = lib.crypto_secretbox_open_easy(cipherArr, key, nonceArr);
